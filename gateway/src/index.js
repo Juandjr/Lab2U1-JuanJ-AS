@@ -6,7 +6,6 @@ const winston = require('winston');
 const auth = require('./middlewares/auth');
 
 const app = express();
-app.use(express.json());
 
 // Logger centralizado
 const logger = winston.createLogger({
@@ -33,12 +32,13 @@ app.use((req, _, next) => {
 });
 
 // Ruta publica: login (NO requiere JWT)
-app.use('/auth/login', require('./routes/auth'));
+app.use('/auth/login', express.json(), require('./routes/auth'));
 
 // Funcion auxiliar para crear opciones del proxy
-const proxyOpts = (target, name) => ({
+const proxyOpts = (target, name, pathRewrite) => ({
     target,
     changeOrigin: true,
+    ...(pathRewrite ? { pathRewrite } : {}),
     on: {
         error: (err, req, res) => {
             logger.error(`[${name}] ${err.message}`);
@@ -55,7 +55,11 @@ app.use('/api/empleados',
     auth,
     createProxyMiddleware(proxyOpts(
         process.env.EMPLEADOS_URL || 'http://localhost:3001',
-        'Empleados'
+        'Empleados',
+        (_, req) => req.originalUrl.replace(
+            /^\/api\/empleados(?=\/|\?|$)/,
+            '/empleados'
+        )
     ))
 );
 
@@ -63,7 +67,11 @@ app.use('/api/nomina',
     auth,
     createProxyMiddleware(proxyOpts(
         process.env.NOMINA_URL || 'http://localhost:3002',
-        'Nomina'
+        'Nomina',
+        (_, req) => req.originalUrl.replace(
+            /^\/api\/nomina(?=\/|\?|$)/,
+            '/nomina'
+        )
     ))
 );
 
@@ -71,7 +79,11 @@ app.use('/api/reclutamiento',
     auth,
     createProxyMiddleware(proxyOpts(
         process.env.RECLUTAMIENTO_URL || 'http://localhost:3003',
-        'Reclutamiento'
+        'Reclutamiento',
+        (_, req) => req.originalUrl.replace(
+            /^\/api\/reclutamiento(?=\/|\?|$)/,
+            '/reclutamiento'
+        )
     ))
 );
 
